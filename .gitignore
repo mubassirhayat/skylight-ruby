@@ -11,6 +11,7 @@
 *.a
 Makefile
 mkmf.log
+skylight_dlopen.c
 /lib/skylight_native.*
 
 # Ignore OS artifacts

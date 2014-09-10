@@ -1,6 +1,4 @@
 ---
-version: "dfa09f3"
+version: "0.4.0-4744a13"
 checksums:
-  linux-x86_64: "be6c610564c66e2a098e7c22226ac879cc970bac252b2534a11b556197f2efca"
-  linux-x86: "2113e80b8afddf5f00c81590c8cbcfbb6ecaf9dbdec950eca06bb11ed1456351"
-
+  x86_64-linux: "592609206bd72d9d2eea18ed760004aa29835cb9cfbd331b96c16ba2ac88ef30"

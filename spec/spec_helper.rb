@@ -3,23 +3,21 @@ APP_ROOT = File.expand_path("../..", __FILE__)
 require 'rubygems'
 require 'bundler/setup'
 
-require 'rspec'
-
-unless ENV['SKYLIGHT_DISABLE_AGENT']
-  # Trigger hard-crash if C-ext is missing
-  ENV["SKYLIGHT_REQUIRED"] = "true"
-end
-
+# Require dependencies
 require 'yaml'
-require 'skylight'
 require 'timecop'
 require 'beefcake'
+require 'rspec'
+require 'rspec/collection_matchers'
 
 require 'webmock/rspec'
 WebMock.disable!
 
-# Begin Probed libraries
+# Loads Skylight + the native extension such that missing the native extension
+# will report more helpful errors
+require "support/native"
 
+# Begin Probed libraries
 begin
   require 'excon'
   require 'skylight/probes/excon'
@@ -85,7 +83,10 @@ WORKER_SPAWN_TIMEOUT = get_worker_spawn_timeout
 
 # End Normalize Libraries
 
-Dir[File.expand_path('../support/*.rb', __FILE__)].each { |f| require f }
+# Require support files
+Dir[File.expand_path('../support/*.rb', __FILE__)].each do |f|
+  require "support/#{File.basename(f, ".rb")}"
+end
 
 all_probes = %w(Excon Net::HTTP Redis)
 installed_probes = Skylight::Probes.installed.keys
@@ -95,14 +96,17 @@ puts "Testing probes: #{installed_probes.join(", ")}" unless installed_probes.em
 puts "Skipping probes: #{skipped_probes.join(", ")}"  unless skipped_probes.empty?
 
 RSpec.configure do |config|
-  config.color_enabled = true
-
-  unless defined?(AllocationCounter)
-    config.filter_run_excluding allocations: true
-  end
-
   unless defined?(Moped)
     config.filter_run_excluding moped: true
+  end
+
+  e = ENV.clone
+
+  config.before :each do
+    Skylight::Config::ENV_TO_KEY.keys.each do |key|
+      key = "SKYLIGHT_#{key}"
+      ENV[key] = e[key]
+    end
   end
 
   if ENV['SKYLIGHT_DISABLE_AGENT']

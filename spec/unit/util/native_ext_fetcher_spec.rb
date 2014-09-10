@@ -1,4 +1,5 @@
 require 'spec_helper'
+require 'skylight/util/native_ext_fetcher'
 
 module Skylight::Util
   describe NativeExtFetcher do

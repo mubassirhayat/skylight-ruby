@@ -13,7 +13,7 @@ describe "Skylight::Middleware", :http, :agent do
 
   let :env do
     e = {}
-    e.stub!(:hello)
+    e.stub(:hello)
     e
   end
 
