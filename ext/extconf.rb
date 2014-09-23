@@ -110,7 +110,12 @@ $VPATH  << SKYLIGHT_LIB_PATH
 SRC_PATH = File.expand_path('..', __FILE__)
 
 $srcs = Dir[File.expand_path("*.c", SRC_PATH)].map { |f| File.basename(f) }
-$srcs << "skylight_dlopen.c" # From libskylight dist
+
+# If the native agent support files were downloaded to a different directory,
+# explicitly the file to the list of sources.
+unless $srcs.include?('skylight_dlopen.c')
+  $srcs << "skylight_dlopen.c" # From libskylight dist
+end
 
 def find_file(file, root)
   path = File.expand_path(file, root)
