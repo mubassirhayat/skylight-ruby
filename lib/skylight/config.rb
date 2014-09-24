@@ -100,6 +100,8 @@ module Skylight
       :'metrics.report_interval' => 60
     }
 
+    DEFAULT_CA_FILE  = File.expand_path('../data/cacert.pem', __FILE__)
+
     # Conditionally set the SSL cert file
     if defined?(OpenSSL::X509::DEFAULT_CERT_FILE)
       f = OpenSSL::X509::DEFAULT_CERT_FILE
@@ -108,6 +110,8 @@ module Skylight
         DEFAULTS[:'daemon.ssl_cert_path'] = f
       end
     end
+
+    DEFAULTS[:'daemon.ssl_cert_path'] ||= DEFAULT_CA_FILE
 
     if defined?(OpenSSL::X509::DEFAULT_CERT_DIR)
       d = OpenSSL::X509::DEFAULT_CERT_DIR
