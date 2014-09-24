@@ -2,6 +2,7 @@ require 'uri'
 require 'yaml'
 require 'fileutils'
 require 'thread'
+require 'openssl'
 require 'skylight/util/hostname'
 require 'skylight/util/logging'
 require 'skylight/util/platform'
@@ -62,6 +63,8 @@ module Skylight
       "CLIENT_CHECK_INTERVAL"        => :'daemon.client_check_interval',
       "CLIENT_QUEUE_DEPTH"           => :'daemon.client_queue_depth',
       "CLIENT_WRITE_TIMEOUT"         => :'daemon.client_write_timeout',
+      "SSL_CERT_PATH"                => :'daemon.ssl_cert_path',
+      "SSL_CERT_DIR"                 => :'daemon.ssl_cert_dir',
 
       # == Legacy settings ==
       #
@@ -97,6 +100,23 @@ module Skylight
       :'metrics.report_interval' => 60
     }
 
+    # Conditionally set the SSL cert file
+    if defined?(OpenSSL::X509::DEFAULT_CERT_FILE)
+      f = OpenSSL::X509::DEFAULT_CERT_FILE
+
+      if f && File.exist?(f)
+        DEFAULTS[:'daemon.ssl_cert_path'] = f
+      end
+    end
+
+    if defined?(OpenSSL::X509::DEFAULT_CERT_DIR)
+      d = OpenSSL::X509::DEFAULT_CERT_DIR
+
+      if d && File.exist?(d)
+        DEFAULTS[:'daemon.ssl_cert_dir'] = d
+      end
+    end
+
     if Skylight.native?
       native_path = Skylight.libskylight_path
 
@@ -116,7 +136,9 @@ module Skylight
       :version,
       :'daemon.lazy_start',
       :'daemon.lib_path',
-      :'daemon.exec_path' ]
+      :'daemon.exec_path',
+      :'daemon.ssl_cert_dir',
+      :'daemon.ssl_cert_path' ]
 
     VALIDATORS = {
       :'agent.interval' => [lambda { |v, c| Integer === v && v > 0 }, "must be an integer greater than 0"]

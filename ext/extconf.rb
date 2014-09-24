@@ -14,9 +14,14 @@ include Skylight::Util
 
 SKYLIGHT_INSTAL_LOG = File.expand_path("../install.log", __FILE__)
 SKYLIGHT_REQUIRED   = ENV.key?("SKYLIGHT_REQUIRED") && ENV['SKYLIGHT_REQUIRED'] !~ /^false$/i
-SKYLIGHT_LIB_PATH   = ENV['SKYLIGHT_LIB_PATH'] || File.expand_path('.')
 SKYLIGHT_FETCH_LIB  = !ENV.key?('SKYLIGHT_FETCH_LIB') || ENV['SKYLIGHT_REQUIRED'] !~ /^false$/i
-LOG                 = Logger.new(MultiIO.new(STDOUT, File.open(SKYLIGHT_INSTAL_LOG, 'a')))
+
+# Directory where skylight.h exists
+SKYLIGHT_HDR_PATH = ENV['SKYLIGHT_HDR_PATH'] || ENV['SKYLIGHT_LIB_PATH'] || '.'
+SKYLIGHT_LIB_PATH = ENV['SKYLIGHT_LIB_PATH'] || File.expand_path("../../lib/skylight/native/#{Platform.tuple}", __FILE__)
+
+# Setup logger
+LOG = Logger.new(MultiIO.new(STDOUT, File.open(SKYLIGHT_INSTAL_LOG, 'a')))
 
 # Handles terminating in the case of a failure. If we have a bug, we do not
 # want to break our customer's deploy, but extconf.rb requires a Makefile to be
@@ -41,16 +46,17 @@ end
 # === Setup paths
 #
 root              = File.expand_path('../', __FILE__)
+hdrpath           = File.expand_path(SKYLIGHT_HDR_PATH)
 libpath           = File.expand_path(SKYLIGHT_LIB_PATH)
 libskylight       = File.expand_path("libskylight.#{Platform.libext}", libpath)
 libskylight_yml   = File.expand_path('libskylight.yml', root)
-skylight_dlopen_h = File.expand_path("skylight_dlopen.h", libpath)
-skylight_dlopen_c = File.expand_path("skylight_dlopen.c", libpath)
+skylight_dlopen_h = File.expand_path("skylight_dlopen.h", hdrpath)
+skylight_dlopen_c = File.expand_path("skylight_dlopen.c", hdrpath)
 
-LOG.info "SKYLIGHT_LIB_PATH=#{libpath}"
+LOG.info "SKYLIGHT_HDR_PATH=#{hdrpath}; SKYLIGHT_LIB_PATH=#{libpath}"
 
 # If libskylight is not present, fetch it
-unless File.exist?(libskylight)
+if !File.exist?(libskylight) && !File.exist?(skylight_dlopen_c) && !File.exist?(skylight_dlopen_h)
   if !SKYLIGHT_FETCH_LIB
     fail "libskylight.#{LIBEXT} not found -- remote download disabled; aborting install"
   end
@@ -80,16 +86,31 @@ unless File.exist?(libskylight)
 
   begin
     res = NativeExtFetcher.fetch(
-      version: version,
-      target: File.expand_path('.'),
+      version:  version,
+      target:   hdrpath,
       checksum: checksum,
-      arch: Platform.tuple,
+      arch:     Platform.tuple,
       required: SKYLIGHT_REQUIRED,
       platform: Platform.tuple,
-      logger: LOG)
+      logger:   LOG)
 
     unless res
       fail "could not fetch archive -- aborting skylight native extension build"
+    end
+
+    # Move skylightd & libskylight to appropriate directory
+    if hdrpath != libpath
+      # Ensure the directory is present
+      FileUtils.mkdir_p libpath
+
+      # Move
+      FileUtils.mv "#{hdrpath}/libskylight.#{Platform.libext}",
+                   "#{libpath}/libskylight.#{Platform.libext}",
+                   :force => true
+
+      FileUtils.mv "#{hdrpath}/skylightd",
+                   "#{libpath}/skylightd",
+                   :force => true
     end
   rescue => e
     fail "unable to fetch native extension; msg=#{e.message}\n#{e.backtrace.join("\n")}"
@@ -102,9 +123,17 @@ end
 #
 #
 
+def find_file(file, root = nil)
+  path = File.expand_path(file, root || '.')
+
+  unless File.exist?(path)
+    fail "#{file} missing; path=#{root}"
+  end
+end
+
 # Flag -std=c99 required for older build systems
 $CFLAGS << " -std=c99 -pedantic" # -Wall
-$VPATH  << SKYLIGHT_LIB_PATH
+$VPATH  << libpath
 
 # Where the ruby binding src is
 SRC_PATH = File.expand_path('..', __FILE__)
@@ -117,18 +146,10 @@ unless $srcs.include?('skylight_dlopen.c')
   $srcs << "skylight_dlopen.c" # From libskylight dist
 end
 
-def find_file(file, root)
-  path = File.expand_path(file, root)
-
-  unless File.exist?(path)
-    fail "#{file} missing; path=#{root}"
-  end
-end
-
 # Make sure that the files are present
-find_file 'skylight_dlopen.h', SKYLIGHT_LIB_PATH
-find_file 'skylight_dlopen.c', SKYLIGHT_LIB_PATH
-find_header 'skylight_dlopen.h', SKYLIGHT_LIB_PATH
+find_file 'skylight_dlopen.h', hdrpath
+find_file 'skylight_dlopen.c', hdrpath
+find_header 'skylight_dlopen.h', hdrpath
 have_header 'dlfcn.h' or fail "could not create Makefile; dlfcn.h missing"
 
 # For escaping the GVL

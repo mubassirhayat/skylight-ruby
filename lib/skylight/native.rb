@@ -10,7 +10,7 @@ module Skylight
   end
 
   def self.libskylight_path
-    ENV['SKYLIGHT_LIB_PATH'] || File.expand_path('../..', __FILE__)
+    ENV['SKYLIGHT_LIB_PATH'] || File.expand_path("../native/#{Util::Platform.tuple}", __FILE__)
   end
 
   begin

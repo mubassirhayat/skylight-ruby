@@ -97,7 +97,10 @@ module Skylight
       @config.validate!
 
       t { "starting native instrumenter" }
-      return unless native_start
+      unless native_start
+        warn "failed to start instrumenter"
+        return
+      end
 
       @config.gc.enable
       @subscriber.register!
