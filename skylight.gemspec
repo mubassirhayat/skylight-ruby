@@ -5,7 +5,7 @@ require "skylight/version"
 
 Gem::Specification.new do |s|
   s.name        = "skylight"
-  s.version     = Gem::Version.new(Skylight::VERSION).to_s
+  s.version     = Skylight::VERSION.gsub("-", ".")
   s.platform    = Gem::Platform::RUBY
   s.authors     = ["Tilde, Inc."]
   s.email       = ["engineering@tilde.io"]
